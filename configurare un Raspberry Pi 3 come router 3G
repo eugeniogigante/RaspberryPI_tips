@@ -1,0 +1,128 @@
+Per configurare un Raspberry Pi 3 come router 3G, avrai bisogno di un modulo o una chiavetta 3G compatibile, una scheda microSD con il sistema operativo Raspbian (o Raspberry Pi OS) installato, e un cavo di alimentazione per il Raspberry Pi. Di seguito i passaggi dettagliati:
+
+1. Preparazione del Raspberry Pi
+Scarica e installa Raspberry Pi OS su una scheda microSD (32GB è sufficiente).
+Puoi usare lo strumento Raspberry Pi Imager per scrivere il sistema operativo sulla scheda.
+Inserisci la scheda microSD nel Raspberry Pi, collega mouse, tastiera, monitor, e alimenta il Raspberry Pi.
+2. Collegamento e installazione della chiavetta 3G
+Inserisci la chiavetta 3G in una delle porte USB del Raspberry Pi.
+
+Controlla se il Raspberry Pi la riconosce:
+
+bash
+Copy code
+lsusb
+Troverai un dispositivo che indica il nome della tua chiavetta.
+
+Installa usb-modeswitch, necessario per abilitare la modalità modem:
+
+bash
+Copy code
+sudo apt update
+sudo apt install usb-modeswitch
+Configura usb-modeswitch per assicurarti che il Raspberry Pi riconosca la chiavetta come modem. Spesso le chiavette 3G vengono riconosciute come dispositivi di archiviazione, quindi usb-modeswitch le forza a passare in modalità modem.
+
+3. Configurazione di wvdial
+Installa wvdial, che ti aiuterà a gestire la connessione della chiavetta 3G:
+
+bash
+Copy code
+sudo apt install wvdial
+Configura il file /etc/wvdial.conf con le informazioni del provider di rete:
+
+bash
+Copy code
+sudo nano /etc/wvdial.conf
+Aggiungi il seguente testo (modificandolo con i dettagli del tuo operatore):
+
+ini
+Copy code
+[Dialer Defaults]
+Init1 = ATZ
+Init2 = ATQ0 V1 E1 S0=0 &C1 &D2 +FCLASS=0
+Stupid Mode = 1
+Modem Type = Analog Modem
+Phone = *99#
+ISDN = 0
+Username = <nomeutente>
+Password = <password>
+Modem = /dev/ttyUSB0
+Baud = 460800
+Sostituisci <nomeutente>, <password>, e Phone con quelli specifici del tuo provider 3G. Di solito, molti provider usano "*99#" come numero.
+
+Avvia la connessione 3G:
+
+bash
+Copy code
+sudo wvdial
+Se tutto è configurato correttamente, dovresti vedere una connessione stabilita.
+
+4. Configurazione come router
+Configura iptables per abilitare il forwarding IP, così il Raspberry Pi potrà comportarsi come un router:
+
+bash
+Copy code
+sudo iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
+Abilita il forwarding IP in modo permanente:
+
+bash
+Copy code
+sudo nano /etc/sysctl.conf
+Cerca e rimuovi il commento dalla riga net.ipv4.ip_forward=1.
+
+Applica la configurazione:
+
+bash
+Copy code
+sudo sysctl -p
+5. Configurazione della rete Wi-Fi
+Installa e configura hostapd e dnsmasq:
+
+bash
+Copy code
+sudo apt install hostapd dnsmasq
+Configura hostapd per impostare il Raspberry come access point:
+
+bash
+Copy code
+sudo nano /etc/hostapd/hostapd.conf
+Inserisci la configurazione seguente, modificando il nome della rete (SSID) e la password:
+
+ini
+Copy code
+interface=wlan0
+ssid=Pi3Router
+hw_mode=g
+channel=7
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=tuapassword
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+Imposta dnsmasq per il DHCP:
+
+bash
+Copy code
+sudo nano /etc/dnsmasq.conf
+Aggiungi le seguenti righe in fondo:
+
+ini
+Copy code
+interface=wlan0
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+Abilita e avvia hostapd e dnsmasq:
+
+bash
+Copy code
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+sudo systemctl start hostapd
+sudo systemctl restart dnsmasq
+6. Test e verifica
+Collegati alla rete Wi-Fi del Raspberry Pi (SSID "Pi3Router" e password configurata) e verifica che i dispositivi collegati abbiano accesso a Internet.
+
+Fine
+Ora il Raspberry Pi è configurato come router 3G e permette ai dispositivi connessi in Wi-Fi di navigare usando la connessione della chiavetta 3G.
