@@ -1,0 +1,12 @@
+{
+    "serial": {
+        "port": "COM6",
+        "baudrate": 9600,
+        "timeout": 1
+    },
+    "modbus": {
+        "slave_id": 1,
+        "start_address": 100,
+        "register_count": 10
+    }
+}
